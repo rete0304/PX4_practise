@@ -5,4 +5,3 @@ uint8 status 				# Current geofence status
 
 uint8 GF_STATUS_LOADING = 0
 uint8 GF_STATUS_READY = 1
-uint8 GF_STATUS_FAILED = 2
