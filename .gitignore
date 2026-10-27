@@ -1,0 +1,14 @@
+# Separate git repositories (branch through-mode in each)
+/PX4-Autopilot/
+/ros2_ws/src/px4_msgs/
+
+# Simulation and test output
+/logs/
+
+# colcon
+/ros2_ws/build/
+/ros2_ws/install/
+/ros2_ws/log/
+
+__pycache__/
+*.pyc
