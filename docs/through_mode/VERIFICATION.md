@@ -245,7 +245,7 @@
 
 ## 12. M2 驗收結果（2026-10-27）
 
-### 12.1 自動驗收（`tools/through/m2_acceptance.py`）
+### 12.1 自動驗收（`Tools/through/m2_acceptance.py`）
 
 環境：headless `px4 -d`（`PX4_SYS_AUTOSTART=4090`）、`MicroXRCEAgent udp4 -p 8888`、`ros_gz_bridge` `/clock`、`fake_vision_target`（`use_sim_time`）。腳本走 MAVLink 14540，用和 QGC 相同的指令（`AVAILABLE_MODES`、`DO_SET_MODE`），並以 1 Hz 送出 GCS heartbeat（沒有 heartbeat 時 `NAV_DLL_ACT` 會擋下解鎖）。
 
@@ -296,11 +296,11 @@
 |---|---|
 | 機型 | `Tools/simulation/gz/models/x500_through/`（x500_base + 自帶馬達，`motorConstant 1.007e-5`）、`models/through_gimbal/`（由 `gimbal` 衍生：640×480、HFOV 90°、60 Hz；pitch PID `p 3.0 / i 0.05 / d 0.06`、`cmd_max ±1.5`；pitch 行程不變，見 V5） |
 | airframe | `4090_gz_x500_through`：`THR_MDL_FAC 0.72`、`MPC_THR_HOVER 0.60`（D7） |
-| 世界 | `Tools/simulation/gz/worlds/through_ring.sdf`，由 `tools/through/gen_through_ring_world.py` 產生（可調整中心、瞄準點、內徑、管徑、段數）。環為 24 段 cylinder，紅色 emissive，有碰撞；單色天空（`<background>`、無 `<sky>`）、無陰影 |
+| 世界 | `Tools/simulation/gz/worlds/through_ring.sdf`，由 `Tools/through/gen_through_ring_world.py` 產生（可調整中心、瞄準點、內徑、管徑、段數）。環為 24 段 cylinder，紅色 emissive，有碰撞；單色天空（`<background>`、無 `<sky>`）、無陰影 |
 | 視覺節點 | `ros2_ws/src/through_vision/through_vision/through_vision_node.py`（`ros2 run through_vision through_vision`） |
-| 穿環判定 | `tools/through/ring_judge.py`（gz transport `pose/info`，輸出 `crossings.csv`、`los_truth.csv`） |
-| 啟動 | `tools/through/run_through_sim.sh [--headless] [--fake-vision] [--no-window] [--no-judge]`，bridge 設定在 `tools/through/config/through_bridge.yaml` |
-| 檢查腳本 | `tools/through/m3_check.py`；`m2_acceptance.py --lock-service /through_vision/set_lock` 可接真實視覺節點 |
+| 穿環判定 | `Tools/through/ring_judge.py`（gz transport `pose/info`，輸出 `crossings.csv`、`los_truth.csv`） |
+| 啟動 | `Tools/through/run_through_sim.sh [--headless] [--fake-vision] [--no-window] [--no-judge]`，bridge 設定在 `Tools/through/config/through_bridge.yaml` |
+| 檢查腳本 | `Tools/through/m3_check.py`；`m2_acceptance.py --lock-service /through_vision/set_lock` 可接真實視覺節點 |
 
 ### 13.2 驗收
 
@@ -342,7 +342,7 @@
 - **`ThroughControl`**：ALIGN 時 yaw 以 `THRU_YAW_RMAX` 限速轉向 LOS 方位角、gimbal 追蹤；`|pan|, |tilt|, |yaw 誤差| < THRU_ALN_ERR` 持續 `THRU_ALN_T_OK` 後進入 RAMP。RAMP 在 M4 只維持懸停與追蹤（M5 實作）。ALIGN/RAMP 共用 USER_UNLOCK / TARGET_LOST / MIN_ALT 退出條件；EXIT 與 IDLE 時釋放 gimbal。`through_status` 填入 `los_ned`、`los_rate`、仰角/方位角、`vc`、`gimbal_pitch_cmd/meas`。
 - 單元測試 `test/ThroughLosEstimatorTest.cpp`：相機射線正負號、相機姿態 → u 方向、姿態內插、fallback、無效量測保留 u、靜止時 ω ≈ 0、等速直線運動與解析解 `ω = r×ṙ/|r|²` 比較（誤差 < 3%）。`unit-ThroughPnGuidance`、`unit-ThroughLosEstimator` 全部 PASS。
 
-### 14.3 驗收（`tools/through/m4_check.py`）
+### 14.3 驗收（`Tools/through/m4_check.py`）
 
 流程：起飛到 20 m，機頭先偏離環 30°，鎖定後切入 THROUGH；ALIGN 轉回 LOS 方位並由 gimbal 追蹤，進入 RAMP 後停 5 s，再切回 Hold、降落。之後分析 ULog 的 `through_status`，並與 `ring_judge` 的 `los_truth.csv` 比較（兩者都是 sim time，直接對齊）。
 
@@ -378,7 +378,7 @@
 - 第一次驗收時，第一個情境之後所有鎖定都被視覺節點拒絕（目標不在畫面內）。原因：`DO_GIMBAL_MANAGER_CONFIGURE` 釋放控制權後，gimbal manager **保留最後一個 setpoint**（實測 MAVLink pitch +8.4°，鏡頭往上），直到其他模式（Land）重設為止。在起點，環在地平線下 31°、鏡頭上仰約 8° 時已超出垂直半視角 36.9°。
 - **處置**：`GimbalTracker::release()` 先送一次 pitch 0（中立）再釋放。`gimbal/input_mavlink.cpp` 在同一次 poll 中先處理 `gimbal_manager_set_attitude` 再處理 `vehicle_command`，所以順序有保證。規格 8.1 只寫「釋放」，回中立是補充行為，不改變設計方向。
 
-### 15.3 驗收（`tools/through/m5_check.py`）
+### 15.3 驗收（`Tools/through/m5_check.py`）
 
 流程：起飛到 20 m（面向環），每個情境先回起點、鎖定、切入 THROUGH，再觸發一種退出；退出原因同時以狀態文字（即時）和 ULog `through_status.exit_reason` 確認，並確認之後模式為 Hold。鎖定 / 解鎖用 rclpy 直接呼叫 `/through_vision/set_lock`（`ros2 service call` 每次約 1 s，在 GUIDE 中太慢）。
 
@@ -412,7 +412,7 @@
 ### 16.1 內容
 
 - TERMINAL 已在 M5 實作（15.1 節），M6 沒有改動韌體。
-- `tools/through/m6_check.py`：起飛到 25 m（D8）面向環，連續 `--runs` 次（預設 10）從起點鎖定、切入 THROUGH、等待退出；每次之間先**原地爬升**到 25 m 再飛回起點，避免回程穿過環（M5 時回程曾在距環心 1.7 m 處反向穿越，環有碰撞）。之後以 sim time 把 `ring_judge` 的 `crossings.csv` 對到 ULog 中每一次模式執行。
+- `Tools/through/m6_check.py`：起飛到 25 m（D8）面向環，連續 `--runs` 次（預設 10）從起點鎖定、切入 THROUGH、等待退出；每次之間先**原地爬升**到 25 m 再飛回起點，避免回程穿過環（M5 時回程曾在距環心 1.7 m 處反向穿越，環有碰撞）。之後以 sim time 把 `ring_judge` 的 `crossings.csv` 對到 ULog 中每一次模式執行。
 - **只採計模式執行期間（退出後 0.5 s 內）的正向穿越**：M5 的 mode_to 情境中，Hold 在退出後慢速飄過環也被 `ring_judge` 記成 PASS，那不是導引的結果。
 
 ### 16.2 驗收：標準場景 10 次
@@ -439,8 +439,8 @@
 
 ### 17.1 工具
 
-- `tools/through/analyze_through_log.py LOG.ulg [--run N] [--crossings crossings.csv]`：把 ULog 中每次模式執行切出來，以進入模式的時間為 0、各階段塗色，畫 8 張時間序列（phase / 目標有效、LOS 仰角 / 方位角、LOS 角速度、`a_perp` 與 `s`、推力、傾角設定值 / 實際值、pan / tilt 與目標尺寸、`vc` / 速度 / 高度 / gimbal），並印出調參用的指標（ALIGN 靜止時的 LOS 角速度雜訊、GUIDE 的 `|ω|` p95、`|a_perp|`、各種限制 / 飽和的比例、TERMINAL 進入方式、穿環結果）。
-- `tools/through/m7_sweep.py`：一次起飛、每個 case 飛一次俯衝並比較。case = PX4 參數 + 視覺節點參數 + 起點偏移（`std` 標準、`lat` 北偏 5 m（規格 15.2）、`latS` 南偏 5 m、`alt` 高 10 m（規格 15.3））。另外用 `ring_judge` 的真實 LOS 算出 2–5 m 距離的 LOS 偏差。高起點時中立 gimbal 看不到環，腳本會先以 GCS 身分取得 gimbal、壓到幾何俯角再鎖定（`-2` 在 PX4 gimbal 代表自動駕駛自己，要給明確的 sysid/compid）。
+- `Tools/through/analyze_through_log.py LOG.ulg [--run N] [--crossings crossings.csv]`：把 ULog 中每次模式執行切出來，以進入模式的時間為 0、各階段塗色，畫 8 張時間序列（phase / 目標有效、LOS 仰角 / 方位角、LOS 角速度、`a_perp` 與 `s`、推力、傾角設定值 / 實際值、pan / tilt 與目標尺寸、`vc` / 速度 / 高度 / gimbal），並印出調參用的指標（ALIGN 靜止時的 LOS 角速度雜訊、GUIDE 的 `|ω|` p95、`|a_perp|`、各種限制 / 飽和的比例、TERMINAL 進入方式、穿環結果）。
+- `Tools/through/m7_sweep.py`：一次起飛、每個 case 飛一次俯衝並比較。case = PX4 參數 + 視覺節點參數 + 起點偏移（`std` 標準、`lat` 北偏 5 m（規格 15.2）、`latS` 南偏 5 m、`alt` 高 10 m（規格 15.3））。另外用 `ring_judge` 的真實 LOS 算出 2–5 m 距離的 LOS 偏差。高起點時中立 gimbal 看不到環，腳本會先以 GCS 身分取得 gimbal、壓到幾何俯角再鎖定（`-2` 在 PX4 gimbal 代表自動駕駛自己，要給明確的 sysid/compid）。
 
 ### 17.2 掃描結果（`logs/m7_sweep1/`，每格一次俯衝；預設 N 3.5、LPF 8 Hz、TERM_SZ 0.6）
 
@@ -502,4 +502,4 @@
 
 ## 附錄：runtime 探測腳本
 
-位於 session scratchpad（不屬於專案）：`probe_gimbal.py`（MAVLink gimbal v2 正負號與狀態頻率）、`step2.py`（以 gz `camera_imu` 量 pitch 步階響應）。若要保留，可移到 `tools/through/`。
+位於 session scratchpad（不屬於專案）：`probe_gimbal.py`（MAVLink gimbal v2 正負號與狀態頻率）、`step2.py`（以 gz `camera_imu` 量 pitch 步階響應）。若要保留，可移到 `Tools/through/`。

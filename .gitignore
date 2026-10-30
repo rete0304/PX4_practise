@@ -109,3 +109,9 @@ src/systemcmds/topic_listener/listener_generated.cpp
 # colcon
 log/
 keys/
+
+# THROUGH mode: ROS 2 workspace and simulation output
+/ros2_ws/build/
+/ros2_ws/install/
+/ros2_ws/log/
+/logs/
